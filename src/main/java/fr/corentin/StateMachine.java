@@ -14,16 +14,6 @@ import java.util.Set;
  * - Les doublements peuvent être forcés (caractères identiques) ou optionnels (caractères différents)
  */
 class StateMachine {
-
-    // Constantes pour la mise en forme de l'affichage console
-    private static final String GREEN = "\u001B[32m";   // Couleur verte pour les succès
-    private static final String RED = "\u001B[31m";     // Couleur rouge pour les échecs
-    private static final String BLUE = "\u001B[34m";    // Couleur bleue pour les transitions
-    private static final String RESET = "\u001B[0m";    // Réinitialisation des couleurs
-    private static final String CHECK = GREEN + "✓" + RESET;  // Symbole pour succès (✓ vert)
-    private static final String CROSS = RED + "✗" + RESET;    // Symbole pour échec (✗ rouge)
-    private static final String ARROW = BLUE + "→" + RESET;   // Symbole pour transition (→ bleu)
-
     /**
      * Méthode centrale d'exploration récursive du graphe d'états.
      * Cette méthode implémente le cœur de l'algorithme qui cherche toutes les solutions possibles.

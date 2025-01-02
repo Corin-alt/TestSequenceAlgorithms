@@ -6,11 +6,6 @@ public class Main {
     private record TransitionData(int from, int to, char input, char output) {}
     private record TestCase(int startState, String input, List<String> expected) {}
 
-    public static void main(String[] args) {
-        Graph graph = createGraph();
-        runTests(graph);
-    }
-
     private static Graph createGraph() {
         Graph graph = new Graph();
         TransitionData[] transitions = {
@@ -31,6 +26,7 @@ public class Main {
     }
 
     private static void runTests(Graph graph) {
+        System.out.println("EXECUTION DES TESTS DE VALIDATION:");
         TestCase[] testCases = {
                 new TestCase(1, "ab", List.of("zt", "zx")),
                 new TestCase(2, "aa", List.of("xx")),
@@ -41,4 +37,35 @@ public class Main {
             StateMachine.testSequence(graph, test.startState, test.input, test.expected);
         }
     }
+
+    private static void findSolutions(Graph graph, int startState, String input) {
+        System.out.println("\nRecherche specifique:");
+        System.out.println("==================================================");
+        System.out.println("[+] TEST");
+        System.out.printf("    STATE %d | INPUT '%s'%n", startState, input);
+
+        Set<String> solutions = StateMachine.findAllSequences(graph, startState, input);
+
+        if (solutions.isEmpty()) {
+            System.out.println("Solutions: Not found");
+        } else {
+            System.out.println("\nSolutions trouvees :");
+            int i = 1;
+            for (String solution : solutions) {
+                System.out.printf("  %d. %s%n", i++, solution);
+            }
+        }
+        System.out.println("==================================================\n");
+    }
+
+    public static void main(String[] args) {
+        Graph graph = createGraph();
+
+//        runTests(graph);
+
+        System.out.println("\nRecherche specifique:");
+
+        findSolutions(graph, 4, "ab");
+    }
+
 }
