@@ -310,8 +310,6 @@ public class StateMachine {
         return uniqueSequences;
     }
 
-// ... (première partie du code precedent reste identique jusqu'à la methode findUniqueSequenceForState)
-
     /**
      * Trouve une sequence unique pour un etat specifique.
      * Processus:
