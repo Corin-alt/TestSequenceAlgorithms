@@ -1,0 +1,48 @@
+{
+  "states": {
+    "1": {
+      "transitions": {
+        "a": {"toState": 5, "output": "b"},
+        "d": {"toState": 2, "output": "w"}
+      }
+    },
+    "2": {
+      "transitions": {
+        "v": {"toState": 3, "output": "v"}
+      }
+    },
+    "3": {
+      "transitions": {
+        "v": {"toState": 6, "output": "x"}
+      }
+    },
+    "4": {
+      "transitions": {
+        "c": {"toState": 2, "output": "x"}
+      }
+    },
+    "5": {
+      "transitions": {
+        "d": {"toState": 6, "output": "x"},
+        "t": {"toState": 4, "output": "v"}
+      }
+    },
+    "6": {
+      "transitions": {
+        "c": {"toState": 8, "output": "v"}
+      }
+    },
+    "7": {
+      "transitions": {
+        "d": {"toState": 4, "output": "x"},
+        "t": {"toState": 5, "output": "v"}
+      }
+    },
+    "8": {
+      "transitions": {
+        "d": {"toState": 7, "output": "v"},
+        "a": {"toState": 5, "output": "x"}
+      }
+    }
+  }
+}

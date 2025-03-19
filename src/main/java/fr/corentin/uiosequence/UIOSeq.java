@@ -1,279 +1,314 @@
 package fr.corentin.uiosequence;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 
 /**
- * Classe principale demontrant l'utilisation du StateMachineBuilder
- * et l'analyse des sequences d'etats.
- *
- * Cette classe permet de:
- * - Construire une machine à etats complète
- * - Trouver des sequences uniques pour chaque etat
- * - Analyser et afficher les resultats en detail
- * - Verifier l'unicite des transitions
+ * Main class demonstrating the use of StateMachineBuilder
+ * and the analysis of state sequences.
+ * <p>
+ * This class allows:
+ * - Building a complete state machine
+ * - Finding unique sequences for each state
+ * - Analyzing and displaying detailed results
+ * - Verifying transition uniqueness
  */
 public class UIOSeq {
+
+    private static String STATE_MACHINE_FILENAME = "uio/state_machine.json";
+
     /**
-     * Point d'entree principal du programme.
+     * Main entry point of the program.
+     * <p>
+     * Complete process:
+     * 1. State machine construction with the builder
+     * - Definition of all states
+     * - Configuration of possible transitions
+     * 2. Search for identifying sequences
+     * - For each state, finds a unique sequence
+     * 3. Analysis and display of results
+     * - Sequences found
+     * - States without solution
+     * - Transition verification
      *
-     * Processus complet:
-     * 1. Construction de la machine à etats avec le builder
-     *    - Definition de tous les etats
-     *    - Configuration des transitions possibles
-     * 2. Recherche des sequences identificatrices
-     *    - Pour chaque etat, trouve une sequence unique
-     * 3. Analyse et affichage des resultats
-     *    - Sequences trouvees
-     *    - Etats sans solution
-     *    - Verification des transitions
-     *
-     * @param args arguments de la ligne de commande (non utilises)
+     * @param args command line arguments (optional: path to JSON file)
      */
     public static void main(String[] args) {
-        // Etape 1: Construction de la machine avec le builder
-        Map<Integer, Map<String, Transition>> transitions = buildStateMachine();
+        Map<Integer, Map<String, Transition>> stateMachine;
 
-        // Etape 2: Recherche des sequences identificatrices
+        try {
+            InputStream inputStream = UIOSeq.class.getClassLoader().getResourceAsStream(STATE_MACHINE_FILENAME);
+            if (inputStream == null) {
+                throw new IOException("Resource not found: " + STATE_MACHINE_FILENAME);
+            }
+
+            stateMachine = buildStateMachineFromJson(inputStream);
+            System.out.println("State machine loaded from resources: " + STATE_MACHINE_FILENAME);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
         Map<Integer, Map.Entry<String, String>> identifyingSequences =
-                StateMachine.findStateIdentifyingSequences(transitions);
+                StateMachine.findStateIdentifyingSequences(stateMachine);
 
-        // Etape 3: Analyse et affichage des resultats
-        analyzeAndPrintResults(transitions, identifyingSequences);
+        analyzeAndPrintResults(stateMachine, identifyingSequences);
     }
 
     /**
-     * Construit la machine à etats en utilisant le builder.
-     * @return Map des transitions complète de la machine
+     * Builds the state machine by reading from a JSON file.
+     * Expected JSON format:
+     * {
+     * "states": {
+     * "1": {
+     * "transitions": {
+     * "a": {"toState": 5, "output": "b"},
+     * "d": {"toState": 2, "output": "w"}
+     * }
+     * },
+     * "2": {
+     * ...
+     * }
+     * }
+     * }
+     *
+     * @param inputStream Path to the JSON file containing the definition
+     * @return Complete transition map of the machine
+     * @throws IOException If the file cannot be read or parsed
      */
-    private static Map<Integer, Map<String, Transition>> buildStateMachine() {
-        return new StateMachineBuilder()
-                // Etat 1: Etat initial avec deux transitions possibles
-                .state(1)
-                .onInput("a", 5, "b")  // Sur 'a' va à 5, produit 'b'
-                .onInput("d", 2, "w")  // Sur 'd' va à 2, produit 'w'
-                // Etat 2: Une seule transition possible
-                .state(2)
-                .onInput("v", 3, "v")  // Sur 'v' va à 3, produit 'v'
-                // Etat 3: Une seule transition possible
-                .state(3)
-                .onInput("v", 6, "x")  // Sur 'v' va à 6, produit 'x'
-                // Etat 4: Une seule transition possible
-                .state(4)
-                .onInput("c", 2, "x")  // Sur 'c' va à 2, produit 'x'
-                // Etat 5: Deux transitions possibles
-                .state(5)
-                .onInput("d", 6, "x")  // Sur 'd' va à 6, produit 'x'
-                .onInput("t", 4, "v")  // Sur 't' va à 4, produit 'v'
-                // Etat 6: Une seule transition possible
-                .state(6)
-                .onInput("c", 8, "v")  // Sur 'c' va à 8, produit 'v'
-                // Etat 7: Deux transitions possibles
-                .state(7)
-                .onInput("d", 4, "x")  // Sur 'd' va à 4, produit 'x'
-                .onInput("t", 5, "v")  // Sur 't' va à 5, produit 'v'
-                // Etat 8: Deux transitions possibles
-                .state(8)
-                .onInput("d", 7, "v")  // Sur 'd' va à 7, produit 'v'
-                .onInput("a", 5, "x")  // Sur 'a' va à 5, produit 'x'
-                .build();
+    private static Map<Integer, Map<String, Transition>> buildStateMachineFromJson(InputStream inputStream)
+            throws IOException {
+        try (InputStreamReader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8)) {
+            Gson gson = new Gson();
+            JsonObject rootObject = gson.fromJson(reader, JsonObject.class);
+
+            StateMachineBuilder builder = new StateMachineBuilder();
+            JsonObject statesObject = rootObject.getAsJsonObject("states");
+
+            for (Map.Entry<String, JsonElement> stateEntry : statesObject.entrySet()) {
+                String stateKey = stateEntry.getKey();
+                int stateId = Integer.parseInt(stateKey);
+                JsonObject stateObject = stateEntry.getValue().getAsJsonObject();
+                JsonObject transitionsObject = stateObject.getAsJsonObject("transitions");
+
+                builder.state(stateId);
+
+                for (Map.Entry<String, JsonElement> transEntry : transitionsObject.entrySet()) {
+                    String input = transEntry.getKey();
+                    JsonObject transObject = transEntry.getValue().getAsJsonObject();
+                    int toState = transObject.get("toState").getAsInt();
+                    String output = transObject.get("output").getAsString();
+
+                    builder.onInput(input, toState, output);
+                }
+            }
+
+            return builder.build();
+        }
     }
 
     /**
-     * Analyse et affiche les resultats des sequences trouvees.
+     * Analyzes and displays the results of the found sequences.
+     * <p>
+     * This method:
+     * 1. Identifies states without solution
+     * 2. Displays found sequences
+     * 3. Checks used transitions
+     * <p>
+     * The analysis is complete and verifies:
+     * - Presence of sequences for each state
+     * - Uniqueness of transitions
+     * - Details of each transition
      *
-     * Cette methode:
-     * 1. Identifie les etats sans solution
-     * 2. Affiche les sequences trouvees
-     * 3. Verifie les transitions utilisees
-     *
-     * L'analyse est complète et verifie:
-     * - La presence de sequences pour chaque etat
-     * - L'unicite des transitions
-     * - Les details de chaque transition
-     *
-     * @param transitions La machine à etats complète
-     * @param identifyingSequences Les sequences trouvees pour chaque etat
+     * @param transitions          The complete state machine
+     * @param identifyingSequences The sequences found for each state
      */
     private static void analyzeAndPrintResults(
             Map<Integer, Map<String, Transition>> transitions,
             Map<Integer, Map.Entry<String, String>> identifyingSequences) {
 
-        // 1. Trouve les etats sans solution
+        // 1. Find states without solution
         Set<Integer> statesWithoutSolution = findStatesWithoutSolution(transitions, identifyingSequences);
 
-        // 2. Affiche les sequences trouvees
+        // 2. Display found sequences
         printSequences(identifyingSequences, statesWithoutSolution);
 
-        // 3. Verifie les transitions utilisees
+        // 3. Check used transitions
         verifyAndPrintTransitions(identifyingSequences, transitions);
     }
 
     /**
-     * Trouve les etats qui n'ont pas de sequence identificatrice.
+     * Finds states that don't have an identifying sequence.
+     * <p>
+     * Process:
+     * 1. Gets all states in the machine
+     * 2. Gets states with a solution
+     * 3. Computes the difference to find those without solution
+     * <p>
+     * Example:
+     * - All states: [1, 2, 3, 4, 5]
+     * - States with solution: [1, 2, 4]
+     * - States without solution: [3, 5]
      *
-     * Processus:
-     * 1. Obtient tous les etats de la machine
-     * 2. Obtient les etats avec une solution
-     * 3. Calcule la difference pour trouver ceux sans solution
-     *
-     * Exemple:
-     * - Tous les etats: [1, 2, 3, 4, 5]
-     * - Etats avec solution: [1, 2, 4]
-     * - Etats sans solution: [3, 5]
-     *
-     * @param transitions La machine à etats complète
-     * @param identifyingSequences Les sequences trouvees
-     * @return Set des etats sans sequence identificatrice
+     * @param transitions          The complete state machine
+     * @param identifyingSequences The found sequences
+     * @return Set of states without identifying sequence
      */
     private static Set<Integer> findStatesWithoutSolution(
             Map<Integer, Map<String, Transition>> transitions,
             Map<Integer, Map.Entry<String, String>> identifyingSequences) {
-        // Recupère tous les etats de la machine
+        // Get all states in the machine
         Set<Integer> allStates = transitions.keySet();
-        // Recupère les etats qui ont une sequence
+        // Get states that have a sequence
         Set<Integer> statesWithSolution = identifyingSequences.keySet();
-        // Cree une copie pour ne pas modifier l'original
+        // Create a copy to avoid modifying the original
         Set<Integer> statesWithoutSolution = new HashSet<>(allStates);
-        // Retire les etats qui ont une solution
+        // Remove states that have a solution
         statesWithoutSolution.removeAll(statesWithSolution);
         return statesWithoutSolution;
     }
 
     /**
-     * Affiche les sequences trouvees et les etats sans solution.
+     * Displays the found sequences and states without solution.
+     * <p>
+     * Display format:
+     * For each state with solution:
+     * - State number
+     * - Input sequence
+     * - Corresponding output sequence
+     * <p>
+     * For states without solution:
+     * - List of states
+     * - Explanatory message
      *
-     * Format d'affichage:
-     * Pour chaque etat avec solution:
-     * - Numero de l'etat
-     * - Sequence d'entree
-     * - Sequence de sortie correspondante
-     *
-     * Pour les etats sans solution:
-     * - Liste des etats
-     * - Message explicatif
-     *
-     * @param identifyingSequences Map des sequences trouvees par etat
-     * @param statesWithoutSolution Set des etats sans solution
+     * @param identifyingSequences  Map of sequences found per state
+     * @param statesWithoutSolution Set of states without solution
      */
     private static void printSequences(
             Map<Integer, Map.Entry<String, String>> identifyingSequences,
             Set<Integer> statesWithoutSolution) {
 
-        // Affiche d'abord les sequences trouvees
-        System.out.println("Sequences uniques identifiant chaque etat:");
-        // Utilise TreeSet pour afficher les etats dans l'ordre
+        // First display found sequences
+        System.out.println("Unique sequences identifying each state:");
+        // Use TreeSet to display states in order
         for (int state : new TreeSet<>(identifyingSequences.keySet())) {
             Map.Entry<String, String> seq = identifyingSequences.get(state);
-            System.out.printf("Etat %d: entree='%s', sortie='%s'%n",
+            System.out.printf("State %d: input='%s', output='%s'%n",
                     state, seq.getKey(), seq.getValue());
         }
 
-        // Affiche ensuite les etats sans solution
+        // Then display states without solution
         if (!statesWithoutSolution.isEmpty()) {
-            System.out.println("\nEtats sans sequence identificatrice trouvee:");
+            System.out.println("\nStates without identifying sequence found:");
             for (int state : new TreeSet<>(statesWithoutSolution)) {
-                System.out.printf("Etat %d: Aucune sequence unique possible " +
-                        "avec les contraintes donnees%n", state);
+                System.out.printf("State %d: No unique sequence possible " +
+                        "with the given constraints%n", state);
             }
         }
     }
 
     /**
-     * Verifie et affiche les details des transitions utilisees.
+     * Checks and displays the details of used transitions.
+     * <p>
+     * For each state with a sequence:
+     * 1. Gets the transition details
+     * 2. Displays the complete path
+     * 3. Checks if there are duplicate transitions
+     * <p>
+     * Example of transition:
+     * State 1 -> State 5 on input 'a', output: 'b'
      *
-     * Pour chaque etat avec une sequence:
-     * 1. Obtient les details des transitions
-     * 2. Affiche le chemin complet
-     * 3. Verifie s'il y a des transitions dupliquees
-     *
-     * Exemple de transition:
-     * Etat 1 -> Etat 5 sur entree 'a', sortie: 'b'
-     *
-     * @param identifyingSequences Les sequences à verifier
-     * @param transitions La machine à etats complète
+     * @param identifyingSequences The sequences to check
+     * @param transitions          The complete state machine
      */
     private static void verifyAndPrintTransitions(
             Map<Integer, Map.Entry<String, String>> identifyingSequences,
             Map<Integer, Map<String, Transition>> transitions) {
 
-        System.out.println("\nVerification des transitions utilisees:");
-        // Garde trace de toutes les transitions utilisees
+        System.out.println("\nVerification of used transitions:");
+        // Track all used transitions
         Set<Map.Entry<Integer, String>> allUsedTransitions = new HashSet<>();
 
-        // Analyse chaque etat dans l'ordre
+        // Analyze each state in order
         for (int testState : new TreeSet<>(identifyingSequences.keySet())) {
             Map.Entry<String, String> seq = identifyingSequences.get(testState);
 
-            // Obtient les details des transitions pour cet etat
+            // Get transition details for this state
             List<TransitionDetail> detailedTransitions =
                     StateMachine.getDetailedTransitions(testState, seq.getKey(), transitions);
             Set<Map.Entry<Integer, String>> transitionsUsed =
                     StateMachine.getUsedTransitions(testState, seq.getKey(), transitions);
 
-            // Affiche les details et verifie les doublons
+            // Display details and check duplicates
             printTransitionDetails(testState, seq, detailedTransitions);
             checkDuplicateTransitions(transitionsUsed, allUsedTransitions);
 
-            // Ajoute les transitions à l'ensemble global
+            // Add transitions to the global set
             allUsedTransitions.addAll(transitionsUsed);
         }
     }
 
     /**
-     * Affiche les details d'une sequence de transitions.
+     * Displays the details of a transition sequence.
+     * <p>
+     * Display format for each transition:
+     * (start_state, input) : start_state -> end_state, input/output
+     * <p>
+     * Example:
+     * (1, a) : state 1 -> state 5, input/output: a/b
      *
-     * Format d'affichage pour chaque transition:
-     * (etat_depart, entree) : etat_depart -> etat_arrivee, entree/sortie
-     *
-     * Exemple:
-     * (1, a) : etat 1 -> etat 5, entree/sortie: a/b
-     *
-     * @param testState Etat en cours d'analyse
-     * @param seq Sequence à afficher
-     * @param detailedTransitions Liste des transitions à detailler
+     * @param testState           Current state being analyzed
+     * @param seq                 Sequence to display
+     * @param detailedTransitions List of transitions to detail
      */
     private static void printTransitionDetails(
             int testState,
             Map.Entry<String, String> seq,
             List<TransitionDetail> detailedTransitions) {
 
-        System.out.printf("%nPour l'etat %d - sequence: entree='%s', sortie='%s'%n",
+        System.out.printf("%nFor state %d - sequence: input='%s', output='%s'%n",
                 testState, seq.getKey(), seq.getValue());
-        System.out.println("Transitions utilisees:");
+        System.out.println("Used transitions:");
 
-        // Affiche chaque transition en detail
+        // Display each transition in detail
         for (TransitionDetail trans : detailedTransitions) {
-            System.out.printf("  (%d, %s) : etat %d -> etat %d, entree/sortie: %s/%s%n",
+            System.out.printf("  (%d, %s) : state %d -> state %d, input/output: %s/%s%n",
                     trans.fromState(), trans.input(), trans.fromState(),
                     trans.toState(), trans.input(), trans.output());
         }
     }
 
     /**
-     * Verifie et affiche les transitions dupliquees.
+     * Checks and displays duplicate transitions.
+     * <p>
+     * A transition is duplicate if:
+     * - It appears in the new transitions
+     * - AND it already exists in previous transitions
+     * <p>
+     * Purpose: Ensure each transition is used only once
+     * to guarantee sequence uniqueness.
      *
-     * Une transition est dupliquee si:
-     * - Elle apparaît dans les nouvelles transitions
-     * - ET elle existe dejà dans les transitions precedentes
-     *
-     * But: S'assurer que chaque transition n'est utilisee qu'une fois
-     * pour garantir l'unicite des sequences.
-     *
-     * @param newTransitions Nouvelles transitions à verifier
-     * @param existingTransitions Transitions dejà utilisees
+     * @param newTransitions      New transitions to check
+     * @param existingTransitions Transitions already used
      */
     private static void checkDuplicateTransitions(
             Set<Map.Entry<Integer, String>> newTransitions,
             Set<Map.Entry<Integer, String>> existingTransitions) {
 
-        // Cree une copie pour la verification
+        // Create a copy for verification
         Set<Map.Entry<Integer, String>> duplicates = new HashSet<>(newTransitions);
-        // Garde seulement les transitions qui existent dejà
+        // Keep only transitions that already exist
         duplicates.retainAll(existingTransitions);
 
-        // Affiche un avertissement si des doublons sont trouves
+        // Display a warning if duplicates are found
         if (!duplicates.isEmpty()) {
-            System.out.println("ATTENTION: Transitions reutilisees: " + duplicates);
+            System.out.println("WARNING: Reused transitions: " + duplicates);
         }
     }
 }
