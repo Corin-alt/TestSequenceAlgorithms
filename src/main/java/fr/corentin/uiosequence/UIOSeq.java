@@ -1,4 +1,4 @@
-package fr.corentin;
+package fr.corentin.uiosequence;
 
 import java.util.*;
 
@@ -12,7 +12,7 @@ import java.util.*;
  * - Analyser et afficher les resultats en detail
  * - Verifier l'unicite des transitions
  */
-public class Main {
+public class UIOSeq {
     /**
      * Point d'entree principal du programme.
      *
@@ -244,8 +244,8 @@ public class Main {
         // Affiche chaque transition en detail
         for (TransitionDetail trans : detailedTransitions) {
             System.out.printf("  (%d, %s) : etat %d -> etat %d, entree/sortie: %s/%s%n",
-                    trans.getFromState(), trans.getInput(), trans.getFromState(),
-                    trans.getToState(), trans.getInput(), trans.getOutput());
+                    trans.fromState(), trans.input(), trans.fromState(),
+                    trans.toState(), trans.input(), trans.output());
         }
     }
 
