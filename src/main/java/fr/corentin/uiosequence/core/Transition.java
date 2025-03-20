@@ -1,4 +1,4 @@
-package fr.corentin.uiosequence;
+package fr.corentin.uiosequence.core;
 
 /**
  * Class representing a transition in the state machine.

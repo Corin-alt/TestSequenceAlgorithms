@@ -1,4 +1,4 @@
-package fr.corentin.uiosequence;
+package fr.corentin.uiosequence.core;
 
 /**
  * Class that captures all the details of a performed transition.

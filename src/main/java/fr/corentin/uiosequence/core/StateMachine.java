@@ -1,4 +1,4 @@
-package fr.corentin.uiosequence;
+package fr.corentin.uiosequence.core;
 
 import java.util.*;
 
